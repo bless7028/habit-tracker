@@ -543,15 +543,23 @@
 
 <script>
 const EMOJIS = ['💪','🏃','📚','💧','🧘','🥗','🎯','🌅','✍️','🎵','🧹','💊','🚴','🛏️','🌿','☕','🧠','🦷','❤️','🎨','🧴','🐣','🌙','⭐'];
-const today = new Date();
+// today를 함수로 만들어서 항상 현재 날짜를 반환하도록 수정
+function today() { return new Date(); }
 let habits = JSON.parse(localStorage.getItem('cute_habits') || '[]');
 let completions = JSON.parse(localStorage.getItem('cute_completions') || '{}');
 let selectedEmoji = EMOJIS[0];
 let editingId = null;
-let calYear = today.getFullYear(), calMonth = today.getMonth();
+let calYear = today().getFullYear(), calMonth = today().getMonth();
 
-function todayKey() { return today.toISOString().slice(0,10); }
-function dateKey(d) { return d.toISOString().slice(0,10); }
+// 로컬 시간 기준으로 날짜 키 생성 (UTC 아님!)
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function todayKey() { return localDateStr(today()); }
+function dateKey(d) { return localDateStr(d); }
 function save() {
   localStorage.setItem('cute_habits', JSON.stringify(habits));
   localStorage.setItem('cute_completions', JSON.stringify(completions));
@@ -635,7 +643,7 @@ function deleteHabit(id) {
 }
 
 function getTimeStatus(timeFrom, timeTo) {
-  const nowMin = today.getHours() * 60 + today.getMinutes();
+  const nowMin = today().getHours() * 60 + today().getMinutes();
   const [fh,fm] = timeFrom.split(':').map(Number);
   const [th,tm] = timeTo.split(':').map(Number);
   if (nowMin < fh*60+fm) return 'upcoming';
@@ -651,10 +659,10 @@ const statusInfo = {
 
 function renderToday() {
   const key = todayKey();
-  const dow = today.getDay();
+  const dow = today().getDay();
   const todayHabits = habits.filter(h => h.days.includes(dow));
   const opts = { year:'numeric', month:'long', day:'numeric', weekday:'long' };
-  document.getElementById('headerDate').textContent = today.toLocaleDateString('ko-KR', opts);
+  document.getElementById('headerDate').textContent = today().toLocaleDateString('ko-KR', opts);
   const done = todayHabits.filter(h => completions[key]?.includes(h.id)).length;
   const total = todayHabits.length;
   const pct = total ? Math.round(done/total*100) : 0;
@@ -706,7 +714,7 @@ function toggleHabit(id) {
   } else {
     completions[key].push(id);
     fireBurst();
-    const dow = today.getDay();
+    const dow = today().getDay();
     const todayHabits = habits.filter(h => h.days.includes(dow));
     const done = todayHabits.filter(h => completions[key]?.includes(h.id)).length;
     if (done === todayHabits.length && todayHabits.length > 0) {
@@ -720,7 +728,7 @@ function toggleHabit(id) {
 
 function calcStreak(id) {
   let streak = 0;
-  const d = new Date(today);
+  const d = new Date(today());
   while (true) {
     if (streak > 0) d.setDate(d.getDate() - 1);
     if (completions[dateKey(d)]?.includes(id)) streak++;
@@ -789,7 +797,7 @@ function calNav(dir) {
 function renderStats() {
   let ts=0; Object.values(completions).forEach(a=>ts+=a.length);
   let ms=0; habits.forEach(h=>{const s=calcStreak(h.id);if(s>ms)ms=s;});
-  const key=todayKey(); const dow=today.getDay();
+  const key=todayKey(); const dow=today().getDay();
   const td=habits.filter(h=>h.days.includes(dow)&&completions[key]?.includes(h.id)).length;
   document.getElementById('statTotal').textContent=ts;
   document.getElementById('statStreak').textContent=ms;
@@ -798,7 +806,7 @@ function renderStats() {
   const sl=document.getElementById('statHabitList'); sl.innerHTML='';
   habits.forEach(h=>{
     let possible=0,done=0;
-    for(let i=0;i<30;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(h.days.includes(d.getDay())){possible++;if(completions[dateKey(d)]?.includes(h.id))done++;}}
+    for(let i=0;i<30;i++){const d=new Date(today());d.setDate(d.getDate()-i);if(h.days.includes(d.getDay())){possible++;if(completions[dateKey(d)]?.includes(h.id))done++;}}
     const pct=possible?Math.round(done/possible*100):0;
     const row=document.createElement('div'); row.className='habit-stat-row';
     row.innerHTML=`<div class="s-icon">${h.emoji}</div><div class="s-info"><div class="s-name">${h.name}</div><div class="s-bar-wrap"><div class="s-bar" style="width:${pct}%"></div></div></div><div class="s-pct">${pct}%</div>`;
